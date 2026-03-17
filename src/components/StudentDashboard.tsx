@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, BookOpen, CheckCircle, Lock, Menu, ChevronLeft, ChevronRight, Clock, Download, MessageCircle, FileText, StickyNote, Award, Users, Eye, Layers, Box, X, LogOut, Edit2, Save, Mail, Phone, Target, Activity, AlertTriangle, Ruler, Weight, Calendar, User, ArrowLeft, Share2, Copy, ChevronDown, Gift, Star, TrendingUp, Shield, CheckSquare, Square } from 'lucide-react';
+import { Play, BookOpen, CheckCircle, Lock, Menu, ChevronLeft, ChevronRight, Clock, Download, MessageCircle, FileText, StickyNote, Award, Users, Eye, Layers, Box, X, LogOut, Edit2, Save, Mail, Phone, Target, Activity, AlertTriangle, Ruler, Weight, Calendar, User, ArrowLeft, Share2, Copy, ChevronDown, Gift, Star, TrendingUp, Shield, CheckSquare, Square, LayoutGrid } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Product, Module, Chapter, UserRole, BonusItem, Category, Ebook, BonusCategory, BonusItem_2 } from '../types';
 import { DashboardHeader } from './DashboardHeader';
 import { CheckoutModal } from './CheckoutModal';
 import { ProductCheckoutModal } from './ProductCheckoutModal';
 import { EbookModal } from './EbookModal';
+import { ResellerDashboard } from './ResellerDashboard';
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
 
@@ -781,6 +782,7 @@ export const StudentDashboard: React.FC = () => {
   const [selectedBonusCategory, setSelectedBonusCategory] = useState<BonusCategory | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showReseller, setShowReseller] = useState(false);
   const [showReferral, setShowReferral] = useState(false);
   const [requestStatus, setRequestStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
 
@@ -1257,6 +1259,10 @@ export const StudentDashboard: React.FC = () => {
     </div>
   );
 
+  if (showReseller) {
+    return <ResellerDashboard onBack={() => setShowReseller(false)} />;
+  }
+
   if (showProfile) {
     return <MemberProfile onBack={() => setShowProfile(false)} currentUser={currentUser} />;
   }
@@ -1324,6 +1330,17 @@ export const StudentDashboard: React.FC = () => {
                       {/* Tabs de navegação */}
                       <div className="space-y-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2 px-2">Navegação</p>
+
+                        {/* Botão Painel de Revenda — só para REVENDA */}
+                        {currentUser?.role === 'REVENDA' && (
+                          <button
+                            onClick={() => { setShowReseller(true); setIsMenuOpen(false); }}
+                            className="flex items-center gap-3 w-full p-3 rounded-lg text-sm font-bold transition-all bg-purple-900/20 border border-purple-700/30 text-purple-300 hover:bg-purple-900/40 mb-1"
+                          >
+                            <LayoutGrid size={16} />
+                            Painel de Revenda
+                          </button>
+                        )}
 
                         {/* Botão Indicar */}
                         <button

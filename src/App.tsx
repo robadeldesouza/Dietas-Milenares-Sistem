@@ -250,7 +250,7 @@ const MainContent: React.FC = () => {
   if (effectiveRole === 'REVENDA' && !isHomeForced) {
     return (
       <div className="font-sans text-gray-300 antialiased selection:bg-[#D4AF37] selection:text-black bg-black min-h-screen">
-        <ResellerDashboard />
+        <StudentDashboard />
         <GlobalNotes />
       </div>
     );

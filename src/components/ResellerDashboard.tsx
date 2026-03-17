@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bell, DollarSign, Users, Link as LinkIcon, AlertCircle, CreditCard, FileText, Download, BarChart2, TrendingUp, Wrench, Menu, LogOut, X } from 'lucide-react';
+import { Bell, DollarSign, Users, Link as LinkIcon, AlertCircle, CreditCard, FileText, Download, BarChart2, TrendingUp, Wrench, Menu, LogOut, X, ArrowLeft } from 'lucide-react';
 import { ToolsModal } from './ToolsModal';
 import { useData } from '../context/DataContext';
 import toast from 'react-hot-toast';
 
 type ResellerTab = 'overview' | 'withdrawals' | 'materials' | 'reports';
 
-export const ResellerDashboard: React.FC = () => {
+interface ResellerDashboardProps {
+  onBack?: () => void;
+}
+
+export const ResellerDashboard: React.FC<ResellerDashboardProps> = ({ onBack }) => {
   const { currentUser, getResellerStats, notifications, updatePixKey, requestWithdrawal, withdrawals, bonuses, transactions, logout } = useData();
   const [activeTab, setActiveTab] = useState<ResellerTab>('overview');
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
@@ -20,7 +24,8 @@ export const ResellerDashboard: React.FC = () => {
   const [pixKey, setPixKey] = useState(currentUser?.pixKey || '');
   const [pixKeyType, setPixKeyType] = useState<'cpf' | 'email' | 'phone' | 'random'>(currentUser?.pixKeyType || 'email');
 
-  if (!currentUser || currentUser.role !== 'REVENDA') return null;
+  if (!currentUser) return null;
+  if (currentUser.role !== 'REVENDA' && !onBack) return null;
 
   const stats = getResellerStats(currentUser.id);
   const myNotifications = notifications.filter(n => n.userId === currentUser.id);
@@ -352,6 +357,15 @@ export const ResellerDashboard: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 z-40 bg-black border-b border-gray-800 flex items-center overflow-hidden">
         {/* Hamburger */}
         <div className="relative z-50 bg-black py-3 pr-4 flex items-center border-r border-gray-800/50 shadow-[20px_0_25px_-10px_rgba(0,0,0,0.9)]">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-colors mr-1"
+              title="Voltar ao painel"
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="p-2 hover:bg-gray-800 rounded-lg text-[#D4AF37] transition-colors"
@@ -391,6 +405,14 @@ export const ResellerDashboard: React.FC = () => {
 
                     <div className="space-y-1">
                       <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2 px-2">Navegação</p>
+                      {onBack && (
+                        <button
+                          onClick={() => { onBack(); setIsMenuOpen(false); }}
+                          className="flex items-center gap-3 w-full p-3 rounded-lg text-sm font-bold transition-all bg-gray-800/50 text-gray-300 hover:text-white hover:bg-gray-800 mb-1"
+                        >
+                          <ArrowLeft size={16} /> Voltar ao Painel de Membro
+                        </button>
+                      )}
                       {tabs.map(tab => (
                         <button
                           key={tab.id}
