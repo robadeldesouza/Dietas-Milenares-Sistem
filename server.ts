@@ -84,7 +84,7 @@ async function startServer() {
   });
 
   app.post("/api/auth/register", async (req, res) => {
-    const { name, email, password, referral_code } = req.body;
+    const { name, email, password, referral_code, phone, gender, age, weight, height, activity_level, goal, restrictions } = req.body;
     const [ex]: any = await pool.query("SELECT id FROM users WHERE email=?", [email]);
     if (ex.length) return res.status(409).json({ error: "E-mail já cadastrado" });
     const hash = password;
@@ -96,6 +96,10 @@ async function startServer() {
     }
     await pool.query("INSERT INTO users (id,name,email,password_hash,role,referred_by) VALUES (?,?,?,?,?,?)",
       [id, name, email, hash, "VISITANTE", referredBy]);
+    await pool.query(
+      "INSERT INTO user_profiles (id,user_id,phone,gender,age,weight,height,activity_level,goal,restrictions) VALUES (UUID(),?,?,?,?,?,?,?,?,?)",
+      [id, phone || null, gender || null, age || null, weight || null, height || null, activity_level || null, goal || null, restrictions || null]
+    );
     res.status(201).json({ token: signToken({ id, email, role: "VISITANTE" }), user: { id, name, email, role: "VISITANTE" } });
   });
 
@@ -107,6 +111,40 @@ async function startServer() {
     res.json(rows[0]);
   });
 
+  // PROFILE
+  app.get("/api/profile", auth, async (req: any, res) => {
+    const [rows]: any = await pool.query(
+      "SELECT phone,gender,age,weight,height,activity_level,goal,restrictions FROM user_profiles WHERE user_id=?",
+      [req.user.id]);
+    res.json(rows[0] || {});
+  });
+
+  app.put("/api/profile/me", auth, async (req: any, res) => {
+    const { name, email } = req.body;
+    if (!name || !email) return res.status(400).json({ error: "Nome e e-mail obrigatórios" });
+    const [ex]: any = await pool.query("SELECT id FROM users WHERE email=? AND id!=?", [email, req.user.id]);
+    if (ex.length) return res.status(409).json({ error: "E-mail já cadastrado por outro usuário" });
+    await pool.query("UPDATE users SET name=?, email=? WHERE id=?", [name.trim(), email.trim(), req.user.id]);
+    res.json({ ok: true });
+  });
+
+  app.put("/api/profile", auth, async (req: any, res) => {
+    const { phone, gender, age, weight, height, activity_level, goal, restrictions } = req.body;
+    const [ex]: any = await pool.query("SELECT id FROM user_profiles WHERE user_id=?", [req.user.id]);
+    if (ex.length) {
+      await pool.query(
+        "UPDATE user_profiles SET phone=?,gender=?,age=?,weight=?,height=?,activity_level=?,goal=?,restrictions=? WHERE user_id=?",
+        [phone||null, gender||null, age||null, weight||null, height||null, activity_level||null, goal||null, restrictions||null, req.user.id]
+      );
+    } else {
+      await pool.query(
+        "INSERT INTO user_profiles (id,user_id,phone,gender,age,weight,height,activity_level,goal,restrictions) VALUES (UUID(),?,?,?,?,?,?,?,?,?)",
+        [req.user.id, phone||null, gender||null, age||null, weight||null, height||null, activity_level||null, goal||null, restrictions||null]
+      );
+    }
+    res.json({ ok: true });
+  });
+
   // USERS
   app.get("/api/users", auth, adminOnly, async (_r, res) => {
     const [rows]: any = await pool.query("SELECT id,name,email,role,status,referral_code,wallet_balance,pix_key,pix_key_type,created_at FROM users ORDER BY created_at DESC");
@@ -114,6 +152,15 @@ async function startServer() {
   });
   app.patch("/api/users/:id/role", auth, adminOnly, async (req, res) => {
     await pool.query("UPDATE users SET role=? WHERE id=?", [req.body.role, req.params.id]);
+    res.json({ ok: true });
+  });
+
+  app.put("/api/users/:id", auth, adminOnly, async (req, res) => {
+    const { name, email } = req.body;
+    if (!name || !email) return res.status(400).json({ error: "Nome e e-mail obrigatórios" });
+    const [ex]: any = await pool.query("SELECT id FROM users WHERE email=? AND id!=?", [email, req.params.id]);
+    if (ex.length) return res.status(409).json({ error: "E-mail já cadastrado por outro usuário" });
+    await pool.query("UPDATE users SET name=?, email=? WHERE id=?", [name.trim(), email.trim(), req.params.id]);
     res.json({ ok: true });
   });
   app.patch("/api/users/:id/status", auth, adminOnly, async (req, res) => {
@@ -125,6 +172,13 @@ async function startServer() {
 
   app.patch("/api/users/:id/reset-password", auth, adminOnly, async (req, res) => {
     await pool.query("UPDATE users SET password_hash=? WHERE id=?", ["123456", req.params.id]);
+    res.json({ ok: true });
+  });
+
+  app.patch("/api/users/:id/password", auth, adminOnly, async (req, res) => {
+    const { password } = req.body;
+    if (!password || password.length < 4) return res.status(400).json({ error: "Senha muito curta" });
+    await pool.query("UPDATE users SET password_hash=? WHERE id=?", [password, req.params.id]);
     res.json({ ok: true });
   });
 
@@ -253,6 +307,73 @@ async function startServer() {
   app.get("/api/notifications", auth, async (req: any, res) => {
     const [rows]: any = await pool.query("SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC", [req.user.id]);
     res.json(rows);
+  });
+
+  // RESELLER REQUESTS
+  app.post("/api/reseller-requests", auth, async (req: any, res) => {
+    try {
+      const { phone } = req.body;
+      // Bloquear auto-indicação não se aplica aqui, mas registrar solicitação única
+      const [ex]: any = await pool.query(
+        "SELECT id,status FROM reseller_requests WHERE user_id=? ORDER BY created_at DESC LIMIT 1",
+        [req.user.id]
+      );
+      if (ex.length && ex[0].status === 'pending')
+        return res.status(409).json({ error: "Você já tem uma solicitação aguardando aprovação." });
+      if (ex.length && ex[0].status === 'approved')
+        return res.status(409).json({ error: "Sua solicitação já foi aprovada." });
+      const [u]: any = await pool.query("SELECT name,email FROM users WHERE id=?", [req.user.id]);
+      if (!u.length) return res.status(404).json({ error: "Usuário não encontrado" });
+      await pool.query(
+        "INSERT INTO reseller_requests (id,user_id,name,email,phone,status) VALUES (?,?,?,?,?,'pending')",
+        [randomUUID(), req.user.id, u[0].name, u[0].email, phone || null]
+      );
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/reseller-requests", auth, async (req: any, res) => {
+    try {
+      if (req.user.role === 'ADMIN') {
+        const [rows]: any = await pool.query("SELECT * FROM reseller_requests ORDER BY created_at DESC");
+        return res.json(rows);
+      }
+      const [rows]: any = await pool.query(
+        "SELECT * FROM reseller_requests WHERE user_id=? ORDER BY created_at DESC LIMIT 1",
+        [req.user.id]
+      );
+      res.json(rows[0] || null);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.patch("/api/reseller-requests/:id", auth, async (req: any, res) => {
+    try {
+      if (req.user.role !== 'ADMIN') return res.status(403).json({ error: "Acesso negado" });
+      const { status } = req.body;
+      const [rr]: any = await pool.query("SELECT * FROM reseller_requests WHERE id=?", [req.params.id]);
+      if (!rr.length) return res.status(404).json({ error: "Solicitação não encontrada" });
+      await pool.query("UPDATE reseller_requests SET status=? WHERE id=?", [status, req.params.id]);
+      if (status === 'approved') {
+        const refCode = 'REF' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        await pool.query("UPDATE users SET role='REVENDA', referral_code=? WHERE id=?", [refCode, rr[0].user_id]);
+        await pool.query(
+          "INSERT INTO notifications (id,user_id,message,type,is_read) VALUES (?,?,?,'system',0)",
+          [randomUUID(), rr[0].user_id, '🎉 Parabéns! Sua solicitação de revendedor foi aprovada. Acesse o menu "Indicar" para ver seu link exclusivo.']
+        );
+      } else if (status === 'rejected') {
+        await pool.query(
+          "INSERT INTO notifications (id,user_id,message,type,is_read) VALUES (?,?,?,'rejection',0)",
+          [randomUUID(), rr[0].user_id, 'Sua solicitação de revendedor não foi aprovada desta vez. Entre em contato com o suporte para mais informações.']
+        );
+      }
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
   // PRODUCTS
@@ -564,7 +685,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
-    app.get("*", (_r, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
+    app.get("/{*splat}", (_r, res) => res.sendFile(path.join(__dirname, "dist", "index.html")));
   }
 
   app.listen(PORT, "0.0.0.0", () => console.log(`[Server] http://localhost:${PORT}`));
