@@ -162,7 +162,7 @@ const MemberProfile: React.FC<MemberProfileProps> = ({ onBack, currentUser }) =>
           {(saved.weight || saved.height || saved.age) && (
             <div className="grid grid-cols-2 gap-3 p-4 border-b border-[#D4AF37]/15">
               {[
-                { emoji: '⚖', value: saved.weight || '—', unit: 'KG' },
+                { emoji: '⚖️', value: saved.weight || '—', unit: 'KG' },
                 { emoji: '📏', value: saved.height || '—', unit: 'CM' },
                 { emoji: '🎂', value: saved.age || '—',    unit: 'ANOS' },
                 { emoji: '📊', value: imc || '—',          unit: imc ? imcLabel(imc).toUpperCase() : 'IMC' },
@@ -323,7 +323,7 @@ const ReferralModal: React.FC<ReferralModalProps> = ({ isOpen, onClose, currentU
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center">
-                {[{ emoji: '💰', label: '50%', sub: 'de comissão' }, { emoji: '⚡', label: '7 dias', sub: 'para receber' }, { emoji: '♾', label: 'Ilimitado', sub: 'de indicações' }].map(i => (
+                {[{ emoji: '💰', label: '50%', sub: 'de comissão' }, { emoji: '⚡', label: '7 dias', sub: 'para receber' }, { emoji: '♾️', label: 'Ilimitado', sub: 'de indicações' }].map(i => (
                   <div key={i.label} className="bg-black/40 border border-gray-800 rounded-xl p-3">
                     <p className="text-xl mb-1">{i.emoji}</p>
                     <p className="text-[#D4AF37] font-black text-sm">{i.label}</p>

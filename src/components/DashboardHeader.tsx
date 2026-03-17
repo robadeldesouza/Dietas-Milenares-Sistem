@@ -43,7 +43,7 @@ const NAV_GROUPS = [
   },
   {
     label: 'Manutenção',
-    emoji: '⚙',
+    emoji: '⚙️',
     items: [
       { tab: 'settings', label: 'Configurações Gerais', icon: <Settings size={15} /> },
       { tab: 'template_preview', label: 'Template Preview', icon: <FlaskConical size={15} /> },

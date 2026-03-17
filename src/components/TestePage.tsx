@@ -91,7 +91,7 @@ const ProfileTemplate = () => {
       {/* Chips 2×2 */}
       <div className="grid grid-cols-2 gap-3 p-4 border-b border-[#D4AF37]/15">
         {[
-          { emoji: '⚖', value: profile.weight, unit: 'KG' },
+          { emoji: '⚖️', value: profile.weight, unit: 'KG' },
           { emoji: '📏', value: profile.height,  unit: 'CM' },
           { emoji: '🎂', value: profile.age,     unit: 'ANOS' },
           { emoji: '📊', value: imc,             unit: imcLabel(imc).toUpperCase() },

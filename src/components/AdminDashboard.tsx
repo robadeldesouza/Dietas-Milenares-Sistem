@@ -518,7 +518,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-white">
-            Produtos — {products.find(p => p.id === editingProduct.id) ? '🛠' : '🆕'} Produto
+            Produtos — {products.find(p => p.id === editingProduct.id) ? '🛠️' : '🆕'} Produto
           </h3>
           <button onClick={() => setIsEditingProduct(false)} className="text-gray-400 hover:text-white"><X /></button>
         </div>
@@ -857,7 +857,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingCategory.id) ? "🛠" : "🆕"} Modalidade</h3>
+              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingCategory.id) ? "🛠️" : "🆕"} Modalidade</h3>
               <button onClick={() => setIsEditingCategory(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
             
@@ -1006,7 +1006,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingEbook.categoryId)?.name || "Modalidade"} - {ebooks.find(e => e.id === editingEbook.id) ? "🛠" : "🆕"} E-book</h3>
+              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingEbook.categoryId)?.name || "Modalidade"} - {ebooks.find(e => e.id === editingEbook.id) ? "🛠️" : "🆕"} E-book</h3>
               <button onClick={() => setIsEditingEbook(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
             <div className="space-y-4">
@@ -1203,7 +1203,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusCat.id) ? "🛠" : "🆕"} Categoria</h3>
+              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusCat.id) ? "🛠️" : "🆕"} Categoria</h3>
               <button onClick={() => setIsEditingBonusCat(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
 
@@ -1352,7 +1352,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusItem.bonusCategoryId)?.name || "Categoria"} - {bonusItems.find(i => i.id === editingBonusItem.id) ? "🛠" : "🆕"} Item</h3>
+              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusItem.bonusCategoryId)?.name || "Categoria"} - {bonusItems.find(i => i.id === editingBonusItem.id) ? "🛠️" : "🆕"} Item</h3>
               <button onClick={() => setIsEditingBonusItem(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
             <div className="space-y-4">
