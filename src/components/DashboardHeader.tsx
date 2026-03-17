@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Menu, X, LogOut, Home, Maximize, Minimize, FlaskConical, ChevronDown,
@@ -43,9 +43,10 @@ const NAV_GROUPS = [
   },
   {
     label: 'Manutenção',
-    emoji: '⚙️',
+    emoji: '⚙',
     items: [
       { tab: 'settings', label: 'Configurações Gerais', icon: <Settings size={15} /> },
+      { tab: 'template_preview', label: 'Template Preview', icon: <FlaskConical size={15} /> },
     ],
   },
 ];
@@ -57,6 +58,18 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const [isMenuOpen, setIsMenuOpen]   = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [openGroup, setOpenGroup]     = useState<string | null>(null);
+  const [pendingRequests, setPendingRequests] = useState(0);
+
+  useEffect(() => {
+    if (currentUser?.role !== 'ADMIN') return;
+    const token = localStorage.getItem('auth_token') || '';
+    fetch('/api/reseller-requests', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json())
+      .then((data: any[]) => {
+        if (Array.isArray(data)) setPendingRequests(data.filter((r: any) => r.status === 'pending').length);
+      })
+      .catch(() => {});
+  }, [currentUser]);
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -69,6 +82,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   };
 
   const handleTab = (tab: string) => {
+    if (tab === 'template_preview') {
+      setShowTeste(true);
+      setIsMenuOpen(false);
+      return;
+    }
     onTabChange?.(tab);
     setIsMenuOpen(false);
   };
@@ -168,6 +186,11 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                                 className={`w-full flex items-center gap-3 px-5 py-2.5 text-sm transition-colors text-left ${activeTab === item.tab ? 'text-[#D4AF37] font-bold bg-[#D4AF37]/10' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
                               >
                                 {item.icon} {item.label}
+                                {item.tab === 'affiliates' && pendingRequests > 0 && (
+                                  <span className="ml-auto bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-tight">
+                                    {pendingRequests}
+                                  </span>
+                                )}
                               </button>
                             ))}
                           </motion.div>
@@ -177,13 +200,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   );
                 })}
 
-                {/* Template Preview */}
-                <button
-                  onClick={() => { setShowTeste(true); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 text-[#D4AF37] transition-colors text-left text-sm font-bold"
-                >
-                  <FlaskConical size={16} /> Template Preview
-                </button>
               </div>
 
               <div className="p-4 border-t border-gray-800">

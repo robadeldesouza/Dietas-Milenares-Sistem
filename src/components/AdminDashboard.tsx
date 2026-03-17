@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { toast } from 'react-hot-toast';
-import { Check, X, Shield, Users, DollarSign, MessageSquare, Box, BarChart, Settings, Plus, Play, Pause, Trash2, Edit, Save, Image as ImageIcon, CreditCard, Lock, Key, Gift, Wrench, BookOpen, Layers, EyeOff, RefreshCw, ChevronLeft, Search } from 'lucide-react';
+import { Check, X, Shield, Users, DollarSign, MessageSquare, Box, BarChart, Settings, Plus, Play, Pause, Trash2, Edit, Save, Image as ImageIcon, CreditCard, Lock, Key, Gift, Wrench, BookOpen, Layers, EyeOff, RefreshCw, ChevronLeft, Search, UserCheck, UserX, Clock } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { DashboardHeader } from './DashboardHeader';
 import { Product, UserRole, BonusItem, BonusCategory, BonusItem_2, Category, Ebook } from '../types';
@@ -228,8 +228,37 @@ export const AdminDashboard: React.FC = () => {
     ebooks, addEbook, updateEbook, deleteEbook, refreshEbooks
   } = useData();
   
-  const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    const saved = localStorage.getItem('admin_active_tab') as AdminTab | null;
+    if (saved) { localStorage.removeItem('admin_active_tab'); return saved; }
+    return 'dashboard';
+  });
   const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [resellerRequests, setResellerRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token') || '';
+    fetch('/api/reseller-requests', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json())
+      .then((data: any) => setResellerRequests(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const handleResellerRequest = async (id: string, status: 'approved' | 'rejected') => {
+    const token = localStorage.getItem('auth_token') || '';
+    try {
+      await fetch(`/api/reseller-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      });
+      setResellerRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+      toast.success(status === 'approved' ? 'Aprovado! Usuário promovido a Revendedor.' : 'Solicitação rejeitada.');
+    } catch {
+      toast.error('Erro ao processar solicitação');
+    }
+  };
 
   // Product Editor State
   const [isEditingProduct, setIsEditingProduct] = useState(false);
@@ -301,54 +330,105 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const renderAffiliates = () => (
-    <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-      <div className="p-6 border-b border-gray-800">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Users className="text-[#D4AF37]" /> Gestão de Afiliados
-        </h2>
-      </div>
-      <div className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-black p-4 rounded-lg border border-gray-800">
-            <p className="text-gray-500 text-xs uppercase">Total de Afiliados</p>
-            <p className="text-2xl font-bold text-white">{users.filter(u => u.role === 'REVENDA').length}</p>
-          </div>
-          <div className="bg-black p-4 rounded-lg border border-gray-800">
-            <p className="text-gray-500 text-xs uppercase">Comissões Pagas</p>
-            <p className="text-2xl font-bold text-[#D4AF37]">R$ 0,00</p>
-          </div>
-          <div className="bg-black p-4 rounded-lg border border-gray-800">
-            <p className="text-gray-500 text-xs uppercase">Cliques Totais</p>
-            <p className="text-2xl font-bold text-blue-400">0</p>
-          </div>
-        </div>
+    <div className="space-y-6">
 
-        <h3 className="text-lg font-bold text-white mb-4">Revendedores Ativos</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[600px]">
-            <thead className="bg-black/50 text-gray-400 text-xs uppercase">
-              <tr>
-                <th className="p-4">Nome</th>
-                <th className="p-4">Email</th>
-                <th className="p-4">Saldo</th>
-                <th className="p-4">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800">
-              {users.filter(u => u.role === 'REVENDA').map(user => (
-                <tr key={user.id} className="text-sm hover:bg-gray-800/50">
-                  <td className="p-4 text-white font-bold">{user.name}</td>
-                  <td className="p-4 text-gray-400">{user.email}</td>
-                  <td className="p-4 text-[#D4AF37] font-mono">R$ {user.walletBalance?.toFixed(2) || '0.00'}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs ${user.status === 'active' ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
-                      {user.status || 'Ativo'}
+      {/* Solicitações de Revenda */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+          <h2 className="text-white font-bold flex items-center gap-2">
+            <Clock size={18} className="text-yellow-400" /> Solicitações de Revenda
+          </h2>
+          {resellerRequests.filter(r => r.status === 'pending').length > 0 && (
+            <span className="bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full">
+              {resellerRequests.filter(r => r.status === 'pending').length} pendente{resellerRequests.filter(r => r.status === 'pending').length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+        {resellerRequests.length === 0 ? (
+          <div className="p-6 text-center text-gray-500 text-sm">Nenhuma solicitação recebida ainda.</div>
+        ) : (
+          <div className="divide-y divide-gray-800">
+            {resellerRequests.map(req => (
+              <div key={req.id} className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-bold text-sm truncate">{req.name}</p>
+                  <p className="text-gray-500 text-xs truncate">{req.email}</p>
+                  {req.phone && <p className="text-gray-500 text-xs">{req.phone}</p>}
+                  <p className="text-[10px] text-gray-600 mt-1">{new Date(req.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {req.status === 'pending' ? (
+                    <>
+                      <button onClick={() => handleResellerRequest(req.id, 'approved')}
+                        className="flex items-center gap-1.5 bg-green-900/30 text-green-400 border border-green-900/50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-green-900/50 transition-colors">
+                        <UserCheck size={13} /> Aceitar
+                      </button>
+                      <button onClick={() => handleResellerRequest(req.id, 'rejected')}
+                        className="flex items-center gap-1.5 bg-red-900/20 text-red-400 border border-red-900/30 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-900/40 transition-colors">
+                        <UserX size={13} /> Rejeitar
+                      </button>
+                    </>
+                  ) : (
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${req.status === 'approved' ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
+                      {req.status === 'approved' ? '✓ Aprovado' : '✗ Rejeitado'}
                     </span>
-                  </td>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Revendedores Ativos */}
+      <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+        <div className="p-6 border-b border-gray-800">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Users className="text-[#D4AF37]" /> Gestão de Afiliados
+          </h2>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-black p-4 rounded-lg border border-gray-800">
+              <p className="text-gray-500 text-xs uppercase">Total de Afiliados</p>
+              <p className="text-2xl font-bold text-white">{users.filter(u => u.role === 'REVENDA').length}</p>
+            </div>
+            <div className="bg-black p-4 rounded-lg border border-gray-800">
+              <p className="text-gray-500 text-xs uppercase">Comissões Pagas</p>
+              <p className="text-2xl font-bold text-[#D4AF37]">R$ 0,00</p>
+            </div>
+            <div className="bg-black p-4 rounded-lg border border-gray-800">
+              <p className="text-gray-500 text-xs uppercase">Cliques Totais</p>
+              <p className="text-2xl font-bold text-blue-400">0</p>
+            </div>
+          </div>
+          <h3 className="text-lg font-bold text-white mb-4">Revendedores Ativos</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[600px]">
+              <thead className="bg-black/50 text-gray-400 text-xs uppercase">
+                <tr>
+                  <th className="p-4">Nome</th>
+                  <th className="p-4">Email</th>
+                  <th className="p-4">Saldo</th>
+                  <th className="p-4">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-800">
+                {users.filter(u => u.role === 'REVENDA').map(user => (
+                  <tr key={user.id} className="text-sm hover:bg-gray-800/50">
+                    <td className="p-4 text-white font-bold">{user.name}</td>
+                    <td className="p-4 text-gray-400">{user.email}</td>
+                    <td className="p-4 text-[#D4AF37] font-mono">R$ {user.walletBalance?.toFixed(2) || '0.00'}</td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-xs ${user.status === 'active' ? 'bg-green-900/20 text-green-400' : 'bg-red-900/20 text-red-400'}`}>
+                        {user.status || 'Ativo'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -438,7 +518,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-white">
-            Produtos — {products.find(p => p.id === editingProduct.id) ? '🛠️' : '🆕'} Produto
+            Produtos — {products.find(p => p.id === editingProduct.id) ? '🛠' : '🆕'} Produto
           </h3>
           <button onClick={() => setIsEditingProduct(false)} className="text-gray-400 hover:text-white"><X /></button>
         </div>
@@ -777,7 +857,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingCategory.id) ? "🛠️" : "🆕"} Modalidade</h3>
+              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingCategory.id) ? "🛠" : "🆕"} Modalidade</h3>
               <button onClick={() => setIsEditingCategory(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
             
@@ -926,7 +1006,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingEbook.categoryId)?.name || "Modalidade"} - {ebooks.find(e => e.id === editingEbook.id) ? "🛠️" : "🆕"} E-book</h3>
+              <h3 className="text-xl font-bold text-white">Biblioteca - {categories.find(c => c.id === editingEbook.categoryId)?.name || "Modalidade"} - {ebooks.find(e => e.id === editingEbook.id) ? "🛠" : "🆕"} E-book</h3>
               <button onClick={() => setIsEditingEbook(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
             <div className="space-y-4">
@@ -1123,7 +1203,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusCat.id) ? "🛠️" : "🆕"} Categoria</h3>
+              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusCat.id) ? "🛠" : "🆕"} Categoria</h3>
               <button onClick={() => setIsEditingBonusCat(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
 
@@ -1272,7 +1352,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusItem.bonusCategoryId)?.name || "Categoria"} - {bonusItems.find(i => i.id === editingBonusItem.id) ? "🛠️" : "🆕"} Item</h3>
+              <h3 className="text-xl font-bold text-white">Bônus - {bonusCategories.find(c => c.id === editingBonusItem.bonusCategoryId)?.name || "Categoria"} - {bonusItems.find(i => i.id === editingBonusItem.id) ? "🛠" : "🆕"} Item</h3>
               <button onClick={() => setIsEditingBonusItem(false)} className="text-gray-400 hover:text-white"><X /></button>
             </div>
             <div className="space-y-4">
@@ -1395,7 +1475,7 @@ export const AdminDashboard: React.FC = () => {
   );
 
   const roleBadgeColor = (role: string) => ({ VISITANTE: 'bg-gray-700 text-gray-300', MEMBRO: 'bg-blue-900/50 text-blue-300', VIP: 'bg-yellow-900/50 text-yellow-300', REVENDA: 'bg-purple-900/50 text-purple-300', ADMIN: 'bg-red-900/50 text-red-300' }[role] || 'bg-gray-700 text-gray-300');
-  const roleLabel = (role: string) => ({ VISITANTE: 'Visitante', MEMBRO: 'Membro', VIP: 'Membro VIP', REVENDA: 'Revenda', ADMIN: 'Administrador' }[role] || role);
+  const roleLabel = (role: string) => ({ VISITANTE: 'Visitante', MEMBRO: 'Membro', VIP: 'Membro VIP', REVENDA: 'Revenda', ADMIN: 'Admin' }[role] || role);
 
     const renderUsers = () => (
     <div className="space-y-4">
@@ -1446,6 +1526,9 @@ export const AdminDashboard: React.FC = () => {
               <option value="ADMIN">Administrador</option>
             </select>
             <div className="flex gap-2 mt-1 w-full justify-center">
+              <button onClick={() => setEditingUser(user)} className="p-1.5 rounded-lg border bg-yellow-900/20 text-yellow-400 border-yellow-900/30 hover:bg-yellow-900/40 transition-colors" title="Editar Usuário">
+                <Edit size={13} />
+              </button>
               <button onClick={() => { toggleUserStatus(user.id); toast.success('Status atualizado!'); }} className={`p-1.5 rounded-lg border transition-colors ${user.status === 'active' ? 'bg-red-900/20 text-red-400 border-red-900/30 hover:bg-red-900/40' : 'bg-green-900/20 text-green-400 border-green-900/30 hover:bg-green-900/40'}`} title={user.status === 'active' ? 'Bloquear' : 'Desbloquear'}>
                 <Lock size={13} />
               </button>
@@ -1870,6 +1953,90 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black">
+
+      {/* Modal Editar Usuário */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4" onClick={() => setEditingUser(null)}>
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-lg flex items-center gap-2"><Edit size={18} className="text-[#D4AF37]" /> Editar Usuário</h3>
+              <button onClick={() => setEditingUser(null)} className="text-gray-500 hover:text-white"><X size={20} /></button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Nome</label>
+                <input
+                  type="text"
+                  value={editingUser.name}
+                  onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
+                  className="w-full bg-black border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">E-mail</label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="w-full bg-black border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Nova Senha (deixe vazio para não alterar)</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  onChange={e => setEditingUser({ ...editingUser, newPassword: e.target.value })}
+                  className="w-full bg-black border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Role</label>
+                <select
+                  value={editingUser.role}
+                  onChange={e => setEditingUser({ ...editingUser, role: e.target.value })}
+                  className="w-full bg-black border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+                >
+                  <option value="VISITANTE">Visitante</option>
+                  <option value="MEMBRO">Membro</option>
+                  <option value="VIP">Membro VIP</option>
+                  <option value="REVENDA">Revenda</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setEditingUser(null)} className="flex-1 py-2 rounded-lg border border-gray-700 text-gray-400 hover:bg-gray-800 text-sm transition-colors">Cancelar</button>
+              <button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('auth_token') || '';
+                    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+                    const original = users.find(u => u.id === editingUser.id);
+                    // Salva nome e e-mail
+                    await fetch(`/api/users/${editingUser.id}`, { method: 'PUT', headers, body: JSON.stringify({ name: editingUser.name, email: editingUser.email }) });
+                    // Atualiza role se mudou
+                    if (editingUser.role !== original?.role) {
+                      await fetch(`/api/users/${editingUser.id}/role`, { method: 'PATCH', headers, body: JSON.stringify({ role: editingUser.role }) });
+                    }
+                    // Atualiza senha se preenchida
+                    if (editingUser.newPassword) {
+                      await fetch(`/api/users/${editingUser.id}/password`, { method: 'PATCH', headers, body: JSON.stringify({ password: editingUser.newPassword }) });
+                    }
+                    toast.success('Usuário atualizado!');
+                    setEditingUser(null);
+                    localStorage.setItem('admin_active_tab', 'users');
+                    setTimeout(() => window.location.reload(), 600);
+                  } catch { toast.error('Erro ao salvar alterações'); }
+                }}
+                className="flex-1 py-2 rounded-lg bg-[#D4AF37] text-black font-bold text-sm hover:bg-[#b5952f] transition-colors"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <DashboardHeader title="Centro de Comando" icon={<Shield className="text-[#D4AF37]" />} onTabChange={(tab) => setActiveTab(tab as AdminTab)} activeTab={activeTab}>
         <button
           onClick={() => setIsToolsModalOpen(true)}
@@ -1884,71 +2051,6 @@ export const AdminDashboard: React.FC = () => {
 
       <div className="pt-20 px-4 pb-12">
         <div className="container mx-auto max-w-7xl">
-          {/* Navigation Tabs */}
-            {/* Desktop Tabs */}
-            <div className="hidden md:flex flex-wrap gap-2 border-b border-gray-800 pb-4">
-              <button 
-                onClick={() => setActiveTab('dashboard')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <BarChart size={16} /> Dashboard
-              </button>
-              <button 
-                onClick={() => setActiveTab('library')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'library' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <BookOpen size={16} /> Biblioteca
-              </button>
-              <button 
-                onClick={() => setActiveTab('bonuses')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'bonuses' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <Gift size={16} /> Bônus
-              </button>
-              <button 
-                onClick={() => setActiveTab('products')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'products' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <Box size={16} /> Produtos
-              </button>
-              <button 
-                onClick={() => setActiveTab('plans')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'plans' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <CreditCard size={16} /> Planos
-              </button>
-              <button 
-                onClick={() => setActiveTab('users')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'users' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <Users size={16} /> Usuários
-              </button>
-              <button 
-                onClick={() => setActiveTab('affiliates')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'affiliates' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <Users size={16} /> Revendedores
-              </button>
-              <button 
-                onClick={() => setActiveTab('withdrawals')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'withdrawals' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <DollarSign size={16} /> Saques
-              </button>
-              <button 
-                onClick={() => setActiveTab('social_proof')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'social_proof' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <MessageSquare size={16} /> Social Proof
-              </button>
-              <button 
-                onClick={() => setActiveTab('settings')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap ${activeTab === 'settings' ? 'bg-[#D4AF37] text-black font-bold' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}
-              >
-                <Settings size={16} /> Configurações
-              </button>
-            </div>
-          </div>
 
           {/* Content Area */}
           <motion.div

@@ -220,7 +220,7 @@ export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/papyros.png')] opacity-10 pointer-events-none"></div>
       
       <div className="max-w-5xl mx-auto relative z-10 px-4 md:px-8">
-        {/* 1️⃣ TÍTULO PRINCIPAL (TOPO) */}
+        {/* 1⃣ TÍTULO PRINCIPAL (TOPO) */}
         <div className="text-center mb-8">
           <span className="text-[#D4AF37] font-bold tracking-[0.4em] uppercase text-[10px] md:text-xs">Transformação Real</span>
           <h1 className="text-3xl md:text-5xl font-bold font-display text-white mt-3 leading-tight px-4">
@@ -228,7 +228,7 @@ export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({
             <span className="text-golden-gradient italic font-heading font-bold">Derreterem Gordura</span>
           </h1>
 
-          {/* 2️⃣ VÍDEO DO YOUTUBE (MOVIDO PARA BAIXO DA FRASE) */}
+          {/* 2⃣ VÍDEO DO YOUTUBE (MOVIDO PARA BAIXO DA FRASE) */}
           <div className="my-8 relative rounded-2xl overflow-hidden border-2 border-[#D4AF37]/40 shadow-[0_0_50px_rgba(212,175,55,0.15)] aspect-video bg-[#0a0a0a] group cursor-pointer">
             {/* Decorative Corners */}
             <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-[#D4AF37]/60 rounded-tl-2xl pointer-events-none z-40"></div>
@@ -243,10 +243,10 @@ export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({
           </p>
         </div>
 
-        {/* 3️⃣ BLOCO DE MÉTRICAS DE CRESCIMENTO */}
+        {/* 3⃣ BLOCO DE MÉTRICAS DE CRESCIMENTO */}
         {/* Métricas removidas conforme solicitado */}
 
-        {/* 4️⃣ SUBTÍTULO (TÍTULO DA CARTA) */}
+        {/* 4⃣ SUBTÍTULO (TÍTULO DA CARTA) */}
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-5xl font-bold text-white font-display leading-tight">
             <img 
@@ -260,7 +260,7 @@ export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({
           </h2>
         </div>
 
-        {/* 5️⃣ TEXTO PERSUASIVO — ABERTURA DA CARTA */}
+        {/* 5⃣ TEXTO PERSUASIVO — ABERTURA DA CARTA */}
         <div className="space-y-8 text-gray-300 leading-relaxed font-sans mb-16">
           <section className="relative">
             <div className="space-y-6 text-base md:text-lg text-white text-center">
@@ -280,7 +280,7 @@ export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({
           </section>
         </div>
 
-        {/* 6️⃣ PRIMEIRA PROVA VISUAL (FOTO DA MOÇA) */}
+        {/* 6⃣ PRIMEIRA PROVA VISUAL (FOTO DA MOÇA) */}
         <div className="text-center mb-8">
           <h3 className="text-2xl md:text-3xl font-bold text-white font-display">
             Dificuldades reais
@@ -297,7 +297,7 @@ export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({
 
         {renderTestimonialCard(testimonials[1])}
 
-        {/* 7️⃣ TEXTO PERSUASIVO — PROVA E IDENTIFICAÇÃO */}
+        {/* 7⃣ TEXTO PERSUASIVO — PROVA E IDENTIFICAÇÃO */}
         <div className="space-y-8 text-gray-300 leading-relaxed font-sans mb-16">
           <section className="relative">
             <div className="space-y-6 text-base md:text-lg text-gray-400 text-center">
@@ -314,13 +314,13 @@ export const TestimonialsPage: React.FC<TestimonialsPageProps> = ({
           </section>
         </div>
 
-        {/* 8️⃣ SEGUNDA PROVA VISUAL (FOTO DO RAPAZ) */}
+        {/* 8⃣ SEGUNDA PROVA VISUAL (FOTO DO RAPAZ) */}
         {renderProofImage(testimonials[0])}
 
         {/* DEPOIMENTO DO IVAN */}
         {renderTestimonialCard(testimonials[0])}
 
-        {/* 9️⃣ TEXTO PERSUASIVO — FECHAMENTO */}
+        {/* 9⃣ TEXTO PERSUASIVO — FECHAMENTO */}
         <div className="space-y-8 text-gray-300 leading-relaxed font-sans mb-16">
           <section className="relative">
             <div className="space-y-6 text-base md:text-lg text-gray-400 text-center">

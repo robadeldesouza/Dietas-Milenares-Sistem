@@ -402,7 +402,7 @@ export const GlobalNotes: React.FC<GlobalNotesProps> = ({ forcedContext, storage
         return true;
       } else {
         const clean = selector.length > 50 ? selector.substring(0, 50) + '...' : selector;
-        toast.error(`⚠️ Elemento não encontrado na tela atual.\nSeletor: ${clean}\n\nVerifique se está na página correta ou se o elemento é visível.`);
+        toast.error(`⚠ Elemento não encontrado na tela atual.\nSeletor: ${clean}\n\nVerifique se está na página correta ou se o elemento é visível.`);
       }
     } catch (e) { console.error('Erro ao buscar elemento:', e); }
     return false;

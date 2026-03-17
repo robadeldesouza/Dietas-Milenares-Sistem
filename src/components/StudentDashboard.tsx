@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, BookOpen, CheckCircle, Lock, Menu, ChevronLeft, ChevronRight, Clock, Download, MessageCircle, FileText, StickyNote, Award, Users, Eye, Layers, Box, X, LogOut } from 'lucide-react';
+import { Play, BookOpen, CheckCircle, Lock, Menu, ChevronLeft, ChevronRight, Clock, Download, MessageCircle, FileText, StickyNote, Award, Users, Eye, Layers, Box, X, LogOut, Edit2, Save, Mail, Phone, Target, Activity, AlertTriangle, Ruler, Weight, Calendar, User, ArrowLeft, Share2, Copy, ChevronDown, Gift, Star, TrendingUp, Shield, CheckSquare, Square } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Product, Module, Chapter, UserRole, BonusItem, Category, Ebook, BonusCategory, BonusItem_2 } from '../types';
 import { DashboardHeader } from './DashboardHeader';
@@ -9,6 +9,419 @@ import { ProductCheckoutModal } from './ProductCheckoutModal';
 import { EbookModal } from './EbookModal';
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
+
+// ─── Tela de Perfil do Membro ─────────────────────────────────────────────────
+const GOAL_LABELS: Record<string, string> = { perda: 'Perda de Peso', ganho: 'Ganho de Massa', saude: 'Saúde e Longevidade', energia: 'Mais Energia' };
+const ACTIVITY_LABELS: Record<string, string> = { sedentario: 'Sedentário', leve: 'Leve (1-2x/sem)', moderado: 'Moderado (3-4x/sem)', intenso: 'Intenso (5x+/sem)' };
+const GENDER_LABELS: Record<string, string> = { masculino: 'Masculino', feminino: 'Feminino', outro: 'Outro' };
+const calcIMC = (w: number, h: number) => parseFloat((w / Math.pow(h / 100, 2)).toFixed(1));
+const imcLabel = (imc: number) => imc < 18.5 ? 'Abaixo do peso' : imc < 25 ? 'Peso normal' : imc < 30 ? 'Sobrepeso' : 'Obesidade';
+
+interface MemberProfileProps {
+  onBack: () => void;
+  currentUser: any;
+}
+
+const MemberProfile: React.FC<MemberProfileProps> = ({ onBack, currentUser }) => {
+  const token = localStorage.getItem('auth_token') || '';
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState({
+    name: currentUser?.name || '',
+    email: currentUser?.email || '',
+    phone: '', gender: '', age: '', height: '', weight: '',
+    goal: '', activity_level: '', restrictions: '',
+  });
+  const [saved, setSaved] = useState({ ...draft });
+  const profile = editing ? draft : saved;
+  const u = (f: string, v: string) => setDraft(p => ({ ...p, [f]: v }));
+  const imc = profile.weight && profile.height ? calcIMC(parseFloat(profile.weight), parseFloat(profile.height)) : null;
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const merged = {
+          name: currentUser?.name || '',
+          email: currentUser?.email || '',
+          phone: data.phone || '',
+          gender: data.gender || '',
+          age: data.age ? String(data.age) : '',
+          height: data.height ? String(data.height) : '',
+          weight: data.weight ? String(data.weight) : '',
+          goal: data.goal || '',
+          activity_level: data.activity_level || '',
+          restrictions: data.restrictions || '',
+        };
+        setSaved(merged);
+        setDraft(merged);
+      } catch {
+        // sem perfil ainda, mantém vazio
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      const nameEmailRes = await fetch(`/api/profile/me`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: draft.name, email: draft.email }),
+      });
+      if (!nameEmailRes.ok) {
+        const err = await nameEmailRes.json();
+        toast.error(err.error || 'Erro ao salvar nome/e-mail');
+        return;
+      }
+      const profileRes = await fetch(`/api/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          phone: draft.phone, gender: draft.gender,
+          age: draft.age ? parseInt(draft.age) : null,
+          height: draft.height ? parseInt(draft.height) : null,
+          weight: draft.weight ? parseFloat(draft.weight) : null,
+          activity_level: draft.activity_level, goal: draft.goal, restrictions: draft.restrictions,
+        }),
+      });
+      if (!profileRes.ok) {
+        toast.error('Erro ao salvar dados do perfil');
+        return;
+      }
+      setSaved({ ...draft });
+      setEditing(false);
+      toast.success('Perfil atualizado!');
+    } catch {
+      toast.error('Erro ao salvar perfil');
+    }
+  };
+
+  const rows = [
+    { icon: <User size={18} className="text-[#D4AF37]" />,          label: 'NOME',       value: saved.name,                            field: 'name' },
+    { icon: <Mail size={18} className="text-[#D4AF37]" />,          label: 'E-MAIL',     value: saved.email,                           field: 'email',          type: 'email' },
+    { icon: <Phone size={18} className="text-[#D4AF37]" />,         label: 'WHATSAPP',   value: saved.phone,                           field: 'phone' },
+    { icon: <Users size={18} className="text-[#D4AF37]" />,         label: 'GÊNERO',     value: GENDER_LABELS[saved.gender] || saved.gender, field: 'gender', options: GENDER_LABELS },
+    { icon: <Calendar size={18} className="text-[#D4AF37]" />,      label: 'IDADE',      value: saved.age ? `${saved.age} anos` : '',  field: 'age',            type: 'number' },
+    { icon: <Ruler size={18} className="text-[#D4AF37]" />,         label: 'ALTURA',     value: saved.height ? `${saved.height} cm` : '', field: 'height',      type: 'number' },
+    { icon: <Weight size={18} className="text-[#D4AF37]" />,        label: 'PESO',       value: saved.weight ? `${saved.weight} kg` : '', field: 'weight',      type: 'number' },
+    { icon: <Target size={18} className="text-[#D4AF37]" />,        label: 'OBJETIVO',   value: GOAL_LABELS[saved.goal] || '',         field: 'goal',           options: GOAL_LABELS },
+    { icon: <Activity size={18} className="text-[#D4AF37]" />,      label: 'ATIVIDADE',  value: ACTIVITY_LABELS[saved.activity_level] || '', field: 'activity_level', options: ACTIVITY_LABELS },
+    { icon: <AlertTriangle size={18} className="text-[#D4AF37]" />, label: 'RESTRIÇÕES', value: saved.restrictions,                    field: 'restrictions' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 h-14 bg-black/90 backdrop-blur-md border-b border-gray-800 z-50 flex items-center px-4 gap-3">
+        <button onClick={onBack} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition-colors">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-white font-bold text-base flex-1">Meu Perfil</h1>
+        {editing ? (
+          <div className="flex gap-2">
+            <button onClick={handleSave} className="flex items-center gap-1.5 bg-[#D4AF37] text-black text-xs font-bold px-3 py-1.5 rounded-lg">
+              <Save size={12} /> Salvar
+            </button>
+            <button onClick={() => { setDraft({ ...saved }); setEditing(false); }} className="p-1.5 bg-gray-800 text-gray-400 rounded-lg">
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 bg-[#1a1400] border border-[#D4AF37]/40 text-[#D4AF37] text-xs font-bold px-3 py-1.5 rounded-lg">
+            <Edit2 size={12} /> Editar
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="pt-20 flex items-center justify-center h-screen">
+          <div className="w-8 h-8 border-2 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin" />
+        </div>
+      ) : (
+      <div className="pt-20 pb-12 px-4 max-w-lg mx-auto">
+        <div className="bg-[#0d0b00] border border-[#D4AF37]/30 rounded-2xl overflow-hidden">
+
+          {/* Avatar + nome + IMC */}
+          <div className="flex items-center gap-4 p-4 border-b border-[#D4AF37]/15">
+            <div className="w-11 h-11 rounded-full bg-[#D4AF37]/15 border-2 border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] font-black text-lg flex-shrink-0">
+              {(saved.name || currentUser?.name || '?').charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-black text-base leading-tight truncate">{saved.name || currentUser?.name}</p>
+              {imc && <p className="text-[#D4AF37]/60 text-xs">IMC: {imc}</p>}
+            </div>
+          </div>
+
+          {/* Chips 2×2 */}
+          {(saved.weight || saved.height || saved.age) && (
+            <div className="grid grid-cols-2 gap-3 p-4 border-b border-[#D4AF37]/15">
+              {[
+                { emoji: '⚖', value: saved.weight || '—', unit: 'KG' },
+                { emoji: '📏', value: saved.height || '—', unit: 'CM' },
+                { emoji: '🎂', value: saved.age || '—',    unit: 'ANOS' },
+                { emoji: '📊', value: imc || '—',          unit: imc ? imcLabel(imc).toUpperCase() : 'IMC' },
+              ].map(chip => (
+                <div key={chip.unit} className="bg-[#0a0800] border border-[#D4AF37]/20 rounded-2xl p-4 flex flex-col items-center gap-1">
+                  <span className="text-2xl">{chip.emoji}</span>
+                  <span className="text-[#D4AF37] font-black text-2xl leading-tight">{chip.value}</span>
+                  <span className="text-gray-500 text-[10px] uppercase tracking-widest">{chip.unit}</span>
+                </div>
+              ))}
+
+              {/* Card de quilos a perder — ocupa as 2 colunas */}
+              {imc && imc > 25 && saved.weight && saved.height && (() => {
+                const pesoIdeal = 22 * Math.pow(parseFloat(saved.height) / 100, 2);
+                const perder = (parseFloat(saved.weight) - pesoIdeal).toFixed(1);
+                return (
+                  <div className="col-span-2 relative rounded-2xl overflow-hidden p-[2px]">
+                    <div className="absolute inset-[-100%] animate-[spin_4s_linear_infinite] conic-glow" />
+                    <div className="relative bg-[#0a0800] rounded-[14px] px-5 py-4 text-center">
+                      <p className="text-gray-400 text-xs font-medium leading-relaxed">
+                        De acordo com sua altura, idade e peso, você precisa perder{' '}
+                        <span className="text-[#D4AF37] font-black text-sm">{perder} kg</span>
+                        {' '}para atingir o peso ideal.
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Lista com ícones */}
+          <div className="divide-y divide-[#D4AF37]/8">
+            {rows.map(row => (
+              <div key={row.field} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-7 flex-shrink-0">{row.icon}</div>
+                <span className="w-24 flex-shrink-0 text-[10px] text-gray-500 uppercase tracking-widest">{row.label}</span>
+                <div className="flex-1 min-w-0 text-right">
+                  {editing ? (
+                    (row as any).options ? (
+                      <select
+                        value={draft[row.field as keyof typeof draft]}
+                        onChange={e => u(row.field, e.target.value)}
+                        className="bg-black border border-[#D4AF37]/30 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-[#D4AF37] w-full"
+                      >
+                        <option value="">Selecionar...</option>
+                        {Object.entries((row as any).options).map(([k, v]: any) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        type={(row as any).type || 'text'}
+                        value={draft[row.field as keyof typeof draft]}
+                        onChange={e => u(row.field, e.target.value)}
+                        className="bg-black border border-[#D4AF37]/30 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-[#D4AF37] w-full text-right"
+                      />
+                    )
+                  ) : (
+                    <span className="text-white font-bold text-sm truncate block">{row.value || '—'}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Modal de Indicação ───────────────────────────────────────────────────────
+const PROHIBITIONS = [
+  { q: 'Posso comprar usando meu próprio link?', a: 'Não. Auto-indicações são proibidas e resultarão no cancelamento imediato da sua conta de revendedor e perda de todas as comissões.' },
+  { q: 'Posso usar spam ou mensagens em massa?', a: 'Proibido. Qualquer forma de spam, disparos em massa ou grupos sem permissão resulta em banimento imediato.' },
+  { q: 'Posso criar páginas ou sites falsos?', a: 'Absolutamente não. Criar páginas que se passem pelo Dieta Milenar sem autorização é crime sujeito a ação legal.' },
+  { q: 'Posso prometer resultados garantidos?', a: 'Não. Prometer resultados além do que o programa garante oficialmente é proibido e gera responsabilidade legal.' },
+  { q: 'Posso compartilhar o conteúdo do programa?', a: 'Jamais. Compartilhar e-books ou materiais do programa é pirataria e viola os direitos autorais.' },
+  { q: 'Quando recebo minha comissão?', a: '50% de cada venda indicada. Liberado em até 7 dias úteis após confirmação do pagamento.' },
+];
+
+interface ReferralModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  currentUser: any;
+  requestStatus: 'none' | 'pending' | 'approved' | 'rejected';
+  onRequestSent: () => void;
+}
+
+const ReferralModal: React.FC<ReferralModalProps> = ({ isOpen, onClose, currentUser, requestStatus, onRequestSent }) => {
+  const [agreed, setAgreed] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const token = localStorage.getItem('auth_token') || '';
+  const referralLink = currentUser?.referralCode ? `${window.location.origin}/?ref=${currentUser.referralCode}` : '';
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(referralLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (!agreed || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/reseller-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ phone: '' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || 'Erro ao enviar solicitação'); return; }
+      toast.success('Solicitação enviada! Aguarde a aprovação.');
+      onRequestSent();
+      onClose();
+    } catch { toast.error('Erro ao enviar solicitação'); }
+    finally { setLoading(false); }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg max-h-[92vh] bg-[#0a0800] border border-[#D4AF37]/30 rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col shadow-[0_0_50px_rgba(212,175,55,0.15)]">
+
+        {/* Header */}
+        <div className="flex-shrink-0 p-4 border-b border-[#D4AF37]/20 flex items-center justify-between bg-gradient-to-r from-[#D4AF37]/10 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center">
+              <Share2 size={16} className="text-[#D4AF37]" />
+            </div>
+            <div>
+              <p className="text-white font-black text-sm">Programa de Indicação</p>
+              <p className="text-[#D4AF37]/60 text-[10px] uppercase tracking-widest">Dieta Milenar</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-500 hover:text-white rounded-lg hover:bg-gray-800 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {requestStatus === 'approved' && referralLink ? (
+            <div className="p-5 space-y-4">
+              <div className="text-center py-4">
+                <div className="text-4xl mb-2">🏆</div>
+                <p className="text-white font-black text-lg">Você é um Revendedor Oficial!</p>
+                <p className="text-gray-400 text-sm mt-1">Compartilhe seu link exclusivo e ganhe 50% de cada venda.</p>
+              </div>
+              <div className="bg-black/60 border border-[#D4AF37]/30 rounded-xl p-4">
+                <p className="text-[10px] text-[#D4AF37] uppercase tracking-widest mb-2">Seu link de indicação</p>
+                <p className="text-white text-xs font-mono break-all mb-3">{referralLink}</p>
+                <button onClick={handleCopy} className="w-full flex items-center justify-center gap-2 bg-[#D4AF37] text-black font-bold py-2.5 rounded-lg text-sm hover:bg-[#b5952f] transition-colors">
+                  <Copy size={14} /> {copied ? '✓ Copiado!' : 'Copiar Link'}
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                {[{ emoji: '💰', label: '50%', sub: 'de comissão' }, { emoji: '⚡', label: '7 dias', sub: 'para receber' }, { emoji: '♾', label: 'Ilimitado', sub: 'de indicações' }].map(i => (
+                  <div key={i.label} className="bg-black/40 border border-gray-800 rounded-xl p-3">
+                    <p className="text-xl mb-1">{i.emoji}</p>
+                    <p className="text-[#D4AF37] font-black text-sm">{i.label}</p>
+                    <p className="text-gray-600 text-[10px]">{i.sub}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : requestStatus === 'pending' ? (
+            <div className="p-5 text-center py-12">
+              <div className="text-4xl mb-3">⏳</div>
+              <p className="text-white font-black text-lg">Solicitação em Análise</p>
+              <p className="text-gray-400 text-sm mt-2 leading-relaxed">Nossa equipe está avaliando seu perfil.<br />Você receberá uma notificação quando houver resposta.</p>
+            </div>
+          ) : requestStatus === 'rejected' ? (
+            <div className="p-5 text-center py-12">
+              <div className="text-4xl mb-3">❌</div>
+              <p className="text-white font-black text-lg">Solicitação Não Aprovada</p>
+              <p className="text-gray-400 text-sm mt-2 leading-relaxed">Sua solicitação não foi aprovada desta vez.<br />Entre em contato com o suporte para mais informações.</p>
+            </div>
+          ) : (
+            <div className="p-5 space-y-5">
+              {/* Proposta de valor */}
+              <div className="bg-gradient-to-br from-[#D4AF37]/10 to-transparent border border-[#D4AF37]/20 rounded-2xl p-4">
+                <p className="text-[#D4AF37] font-black text-base mb-2 flex items-center gap-2"><TrendingUp size={18} /> Transforme indicações em renda real</p>
+                <p className="text-gray-300 text-sm leading-relaxed">O Programa de Revendedores do <span className="text-[#D4AF37] font-bold">Dieta Milenar</span> permite que você ganhe <span className="text-[#D4AF37] font-black">50% de comissão</span> em cada venda realizada através do seu link exclusivo — sem limite de ganhos.</p>
+                <div className="grid grid-cols-3 gap-2 mt-4">
+                  {[{ icon: <Gift size={14} />, label: '50%', sub: 'Comissão' }, { icon: <Star size={14} />, label: 'Link Próprio', sub: 'Exclusivo' }, { icon: <TrendingUp size={14} />, label: 'Ilimitado', sub: 'Ganhos' }].map(i => (
+                    <div key={i.label} className="bg-black/40 rounded-xl p-2.5 text-center">
+                      <div className="text-[#D4AF37] flex justify-center mb-1">{i.icon}</div>
+                      <p className="text-white font-black text-sm">{i.label}</p>
+                      <p className="text-gray-500 text-[10px]">{i.sub}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Como funciona */}
+              <div>
+                <p className="text-white font-bold text-sm mb-3 flex items-center gap-2"><Shield size={14} className="text-[#D4AF37]" /> Como funciona</p>
+                {[
+                  { n: '1', t: 'Solicite sua aprovação', d: 'Envie sua solicitação e aguarde nossa análise em até 48h.' },
+                  { n: '2', t: 'Receba seu link exclusivo', d: 'Após aprovado, seu link personalizado é gerado automaticamente.' },
+                  { n: '3', t: 'Compartilhe e ganhe', d: 'A cada venda pelo seu link, 50% cai diretamente na sua carteira.' },
+                ].map(s => (
+                  <div key={s.n} className="flex gap-3 mb-3">
+                    <div className="w-6 h-6 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37] font-black text-xs flex-shrink-0 mt-0.5">{s.n}</div>
+                    <div><p className="text-white text-xs font-bold">{s.t}</p><p className="text-gray-500 text-xs">{s.d}</p></div>
+                  </div>
+                ))}
+              </div>
+
+              {/* FAQ proibições */}
+              <div>
+                <p className="text-white font-bold text-sm mb-3 flex items-center gap-2"><AlertTriangle size={14} className="text-yellow-400" /> Regras e Proibições</p>
+                <div className="space-y-1">
+                  {PROHIBITIONS.map((item, i) => (
+                    <div key={i} className="border border-gray-800 rounded-xl overflow-hidden">
+                      <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                        className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-900/50 transition-colors">
+                        <span className="text-xs text-white font-medium pr-2">{item.q}</span>
+                        <ChevronDown size={14} className={`text-gray-500 flex-shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
+                      </button>
+                      {openFaq === i && (
+                        <div className="px-3 pb-3 text-xs text-gray-400 leading-relaxed border-t border-gray-800 pt-2">{item.a}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Checkbox */}
+              <button onClick={() => setAgreed(!agreed)}
+                className="w-full flex items-start gap-3 p-3 rounded-xl border border-gray-800 hover:border-[#D4AF37]/30 transition-colors text-left">
+                <div className={`flex-shrink-0 mt-0.5 transition-colors ${agreed ? 'text-[#D4AF37]' : 'text-gray-600'}`}>
+                  {agreed ? <CheckSquare size={18} /> : <Square size={18} />}
+                </div>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Estou de acordo e me comprometo a <span className="text-white font-bold">não violar o sistema</span> de indicações. Entendo que infrações resultarão no cancelamento imediato da conta de revendedor.
+                </p>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {requestStatus === 'none' && (
+          <div className="flex-shrink-0 p-4 border-t border-[#D4AF37]/15">
+            <button onClick={handleSubmit} disabled={!agreed || loading}
+              className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all ${agreed && !loading ? 'bg-[#D4AF37] text-black shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:bg-[#b5952f]' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}>
+              {loading ? 'Enviando...' : 'Enviar Solicitação'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // Mock content for the reader
 const MOCK_CONTENT = `
@@ -367,6 +780,22 @@ export const StudentDashboard: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedBonusCategory, setSelectedBonusCategory] = useState<BonusCategory | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showReferral, setShowReferral] = useState(false);
+  const [requestStatus, setRequestStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (currentUser.role === 'REVENDA') { setRequestStatus('approved'); return; }
+    const token = localStorage.getItem('auth_token') || '';
+    fetch('/api/reseller-requests', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json())
+      .then((data: any) => {
+        if (data && data.status) setRequestStatus(data.status as any);
+        else setRequestStatus('none');
+      })
+      .catch(() => setRequestStatus('none'));
+  }, [currentUser]);
 
   const menuItems = [
     { id: 'library', label: 'Biblioteca', icon: BookOpen },
@@ -828,6 +1257,10 @@ export const StudentDashboard: React.FC = () => {
     </div>
   );
 
+  if (showProfile) {
+    return <MemberProfile onBack={() => setShowProfile(false)} currentUser={currentUser} />;
+  }
+
   return (
     <div className="min-h-screen bg-black">
       <div className="pt-16 px-4 pb-12 max-w-7xl mx-auto">
@@ -870,16 +1303,40 @@ export const StudentDashboard: React.FC = () => {
                     <div className="flex-1 overflow-y-auto p-4 space-y-6">
                       {/* User Info */}
                       <div className="bg-black/50 p-4 rounded-lg border border-gray-800">
-                        <p className="text-white font-bold">{currentUser?.name}</p>
-                        <p className="text-xs text-gray-500">{currentUser?.email}</p>
-                        <span className="inline-block mt-2 text-[10px] bg-[#D4AF37]/20 text-[#D4AF37] px-2 py-0.5 rounded uppercase font-bold tracking-wider">
-                          {currentUser?.role === 'VIP' ? 'MEMBRO VIP' : currentUser?.role}
-                        </span>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-white font-bold truncate">{currentUser?.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{currentUser?.email}</p>
+                            <span className="inline-block mt-2 text-[10px] bg-[#D4AF37]/20 text-[#D4AF37] px-2 py-0.5 rounded uppercase font-bold tracking-wider">
+                              {currentUser?.role === 'VIP' ? 'MEMBRO VIP' : currentUser?.role}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => { setShowProfile(true); setIsMenuOpen(false); }}
+                            className="flex-shrink-0 p-2 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/20 transition-colors"
+                            title="Editar Perfil"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Tabs de navegação */}
                       <div className="space-y-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2 px-2">Navegação</p>
+
+                        {/* Botão Indicar */}
+                        <button
+                          onClick={() => { setShowReferral(true); setIsMenuOpen(false); }}
+                          className="flex items-center gap-3 w-full p-3 rounded-lg text-sm font-bold transition-all bg-[#D4AF37]/10 border border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/20 mb-1"
+                        >
+                          <Share2 size={16} />
+                          {requestStatus === 'approved'
+                            ? '🔗 Meu Link de Indicação'
+                            : requestStatus === 'pending'
+                            ? '⏳ Solicitação Pendente'
+                            : '💰 Indicar e Ganhar 50%'}
+                        </button>
                         {menuItems.map(item => (
                           <button
                             key={item.id}
@@ -962,6 +1419,15 @@ export const StudentDashboard: React.FC = () => {
         onClose={() => setIsEbookModalOpen(false)}
         ebook={selectedEbook}
         userRole={currentUser?.role}
+      />
+
+      {/* Modal de Indicação */}
+      <ReferralModal
+        isOpen={showReferral}
+        onClose={() => setShowReferral(false)}
+        currentUser={currentUser}
+        requestStatus={requestStatus}
+        onRequestSent={() => setRequestStatus('pending')}
       />
 
       {/* Floating WhatsApp Button */}
